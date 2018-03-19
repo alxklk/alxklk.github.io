@@ -1,0 +1,61 @@
+<html>
+<head>
+</head>
+<body>
+Exact match between positions of line end and black dot proves, that sine interpolation can be approximated by spline interpolation with keySplines="0.365,0,0.635,1"
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="600" xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+  <circle r="200" fill="#cdf"
+    transform="translate(300,200) scale(1,0.25)"
+    stroke-width="10px" stroke="#8af"
+    vector-effect="non-scaling-stroke"
+  />
+  <line x1="200"
+    transform="translate(300,200) scale(1,0.25)"
+    stroke-width="13px" stroke="#fa8"
+    stroke-linecap="round"
+    vector-effect="non-scaling-stroke"
+    >
+      <animateTransform 
+        attributeName="transform"
+        keyTimes="0;1"
+        begin="-10s"
+        dur="20s"
+        type="rotate"
+        values="0;-360"
+        repeatCount="indefinite" 
+        additive="sum"
+      />
+  </line>
+  <circle
+        r="5"
+        fill="#000"
+        >
+      <animateTransform 
+        attributeName="transform"
+        keyTimes="0;0.5;1"
+        dur="20s"
+        type="translate"
+        values="100,200;500,200;100,200"
+        repeatCount="indefinite" 
+        additive="sum"
+        calcMode="spline"
+        keySplines="0.365,0,0.635,1;0.365,0,0.635,1"
+        />
+      <animateTransform 
+        attributeName="transform"
+        keyTimes="0;0.5;1"
+        begin="-15s"
+        dur="20s"
+        type="translate"
+        values="0,50;0,-50;0,50"
+        repeatCount="indefinite" 
+        additive="sum"
+        calcMode="spline"
+        keySplines="0.365,0,0.635,1;0.365,0,0.635,1"
+        />
+    </circle>
+</svg>
+</body>
+</html>
