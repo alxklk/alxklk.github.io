@@ -161,6 +161,10 @@ function SC_malloc()
 
 function SC_memcpy()
 {
+	var toIdx=GetInt(reg_sp-8);
+	var fromIdx=GetInt(reg_sp-12);
+	var count=GetInt(reg_sp-16);
+	mem8.copyWithin(toIdx,fromIdx,fromIdx+count)
 }
 
 function SC_BitBlt(){}
@@ -461,11 +465,11 @@ function SC_stroke()
 		width2=tmp
 	}
 
-	var d=(width2-width1)/0.95;
+	var d=(width2-width1)/1.1;
 	if(d<1)
 	{
 		ctx.globalAlpha=g_col_a
-		ctx.lineWidth=width1*2
+		ctx.lineWidth=width1*1.5
 		ctx.stroke(g_path)
 	}
 	else
@@ -474,7 +478,7 @@ function SC_stroke()
 		for(i=0;i<d;i++)
 		{
 			ctx.globalAlpha=g_col_a*1/d
-			ctx.lineWidth=(width1+(width2-width1)*i/d)*2
+			ctx.lineWidth=(width1+(width2-width1)*i/d)*1.5
 			ctx.stroke(g_path)
 		}
 	}
@@ -517,73 +521,80 @@ function SC_GetKeyEvent(){}
 
 // Sound
 
-let audioContext = new AudioContext()
-let scincAudioQueue=[]
-var ready=false
+let audioContext
+let scincAudioQueue
 
-async function CreateAudio()
+function StartSound()
 {
-	let newAudioNode
-	try
+
+	audioContext = new AudioContext()
+	scincAudioQueue=[]
+
+	async function CreateAudio()
 	{
-		console.log("adding...")
-		await audioContext.audioWorklet.addModule("SC_Audio.js");
-		console.log("OK")
-		newAudioNode = new AudioWorkletNode(audioContext, "ScincAudio", 
-		{
-			numberOfInputs:0,
-			numberOfOutputs:1,
-			outputChannelCount:[2],
-		})
-	}
-	catch(e)
-	{
+		let newAudioNode
 		try
 		{
-			console.log("adding... once more")
+			console.log("adding...")
 			await audioContext.audioWorklet.addModule("SC_Audio.js");
 			console.log("OK")
-			newAudioNode = new AudioWorkletNode(audioContext, "ScincAudio");
+			newAudioNode = new AudioWorkletNode(audioContext, "ScincAudio", 
+			{
+				numberOfInputs:0,
+				numberOfOutputs:1,
+				outputChannelCount:[2],
+			})
 		}
 		catch(e)
 		{
-			console.log('** Error: Unable to create worklet node: ${e}');
+			try
+			{
+				console.log("adding... once more")
+				await audioContext.audioWorklet.addModule("SC_Audio.js");
+				console.log("OK")
+				newAudioNode = new AudioWorkletNode(audioContext, "ScincAudio");
+			}
+			catch(e)
+			{
+				console.log('** Error: Unable to create worklet node: ${e}');
+			}
 		}
+		newAudioNode.scbuf=scincAudioBuf
+		ready=true
+		return newAudioNode
 	}
-	newAudioNode.scbuf=scincAudioBuf
-	ready=true
-	return newAudioNode
-}
 
-let processorNode;
+	let processorNode;
 
-health=0
+	health=0
 
-silenceBuf=[]
-for(let i=0;i<256;i++)silenceBuf.push(0)
+	silenceBuf=[]
+	for(let i=0;i<256;i++)silenceBuf.push(0)
 
-async function StartAudio()
-{
-	processorNode=await CreateAudio()
-	processorNode.port.onmessage=function(e)
+	async function StartAudio()
 	{
-		if(scincAudioQueue.length)
+		processorNode=await CreateAudio()
+		processorNode.port.onmessage=function(e)
 		{
-			processorNode.port.postMessage(scincAudioQueue[0])
-			scincAudioQueue.shift()
-		}
-		else
-		{
-			processorNode.port.postMessage(silenceBuf)
-		}
-}
-	processorNode.connect(audioContext.destination)
-	console.log("Resuming")
-	await audioContext.resume()
-	console.log("OK")
-}
+			if(scincAudioQueue.length)
+			{
+				processorNode.port.postMessage(scincAudioQueue[0])
+				scincAudioQueue.shift()
+			}
+			else
+			{
+				processorNode.port.postMessage(silenceBuf)
+			}
+	}
+		processorNode.connect(audioContext.destination)
+		console.log("Resuming")
+		await audioContext.resume()
+		console.log("OK")
+	}
 
-StartAudio()
+	StartAudio()
+
+}
 
 function SC_snd_add(){}
 function SC_snd_data(){}
@@ -591,20 +602,15 @@ function SC_snd_play(){}
 
 function SC_snd_bufhealth()
 {
-	if(ready)
-		PutInt(reg_sp-4,scincAudioQueue.length*128)
-	else
-	PutInt(reg_sp-4,20000)
+	PutInt(reg_sp-4,scincAudioQueue.length*128)
 }
 
 var scincAudioBuf=[]
 
 function SC_snd_out()
 {
-	var l=GetFloat(reg_sp-8)
-	var r=GetFloat(reg_sp-16)
-	scincAudioBuf.push(l)
-	scincAudioBuf.push(r)
+	scincAudioBuf.push(GetFloat(reg_sp-8))
+	scincAudioBuf.push(GetFloat(reg_sp-16))
 	if(scincAudioBuf.length>=256)
 	{
 		scincAudioQueue.push(scincAudioBuf)

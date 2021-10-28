@@ -28,15 +28,20 @@ class ScincAudioProcessor extends AudioWorkletProcessor
 		{
 			let output = outputList[o];
 			let channelCount = output.length
-			for (let channel = 0; channel < 2; channel++)
+			//for (let channel = 0; channel < 2; channel++)
 			{
-				let sampleCount = output[channel].length;
+				let sampleCount = output[0].length;
 				for (let i = 0; i < sampleCount; i++)
 				{
 					let l=0
+					let r=0
 					if(scbuf.length>0)
+					{
 						l=scbuf[0].shift()
-					output[channel][i] = l;
+						r=scbuf[0].shift()
+					}
+					output[0][i] = l;
+					output[1][i] = r;
 				}
 			}
 			scbuf.shift()

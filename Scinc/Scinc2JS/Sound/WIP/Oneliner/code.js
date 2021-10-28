@@ -392,3 +392,4 @@ code[196]=function(){
 let start_addr=69
 let start_rsp=192
 let graphics=1
+let sound=1

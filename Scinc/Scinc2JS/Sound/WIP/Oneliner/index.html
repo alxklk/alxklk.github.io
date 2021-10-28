@@ -9,6 +9,9 @@
 
 document.body.style.background="#808080"
 
+if((typeof sound !== 'undefined')&&(sound))
+	StartSound()
+
 if((typeof graphics !== 'undefined')&&(graphics))
 {
 	var screen = document.createElement('canvas')
