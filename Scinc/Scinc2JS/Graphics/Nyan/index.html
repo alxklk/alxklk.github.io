@@ -1,0 +1,156 @@
+<html>
+<head>
+	<script lang="text/javascript" src="SC_font6x12.js"></script>
+	<script lang="text/javascript" src="SC_Runtime.js"></script>
+	<script lang="text/javascript" src="code.js"></script>
+</head>
+<body>
+
+<script lang="text/javascript">
+
+document.body.style.background="#808080"
+
+if((typeof sound !== 'undefined')&&(sound))
+	StartSound()
+
+if((typeof graphics !== 'undefined')&&(graphics))
+{
+	var screen = document.createElement('canvas')
+	screen.id = 'screen'
+
+	if(typeof G_SCREEN_WIDTH !== 'undefined')
+		screen.width=G_SCREEN_WIDTH
+	else
+		screen.width=640
+
+		if(typeof G_SCREEN_HEIGHT !== 'undefined')
+		screen.height=G_SCREEN_HEIGHT
+	else
+		screen.height=480
+	document.body.appendChild(screen)
+
+	var SC_mx;
+	var SC_my;
+	var SC_mb;
+
+	screen.onmousemove=function(e)
+	{
+		SC_mx=e.x;
+		SC_my=e.y;
+		SC_mb=e.buttons;
+	}
+
+	screen.onmousedown=function(e)
+	{
+		SC_mx=e.x;
+		SC_my=e.y;
+		SC_mb=e.buttons;
+	}
+
+	screen.onmouseup=function(e)
+	{
+		SC_mx=e.x;
+		SC_my=e.y;
+		SC_mb=e.buttons;
+	}
+
+	var ctx=screen.getContext('2d')
+	ctx.fillStyle = "#304050";
+	ctx.fillRect(0, 0, 640, 480);
+
+}
+
+keysMap=new Map()
+for(i=0;i<26;i++)
+{
+	keysMap.set(65+i,65+32+i)
+}
+keysMap.set(38,4000)
+keysMap.set(40,4001)
+keysMap.set(37,4002)
+keysMap.set(39,4003)
+keysMap.set(32,32)
+
+
+keysPressed=new Set()
+
+keyEvents=[]
+
+doc_onkeydown=function(e)
+{
+	if(keysMap.has(e.keyCode))
+	{
+		let keyCode=keysMap.get(e.keyCode);
+		keysPressed.add(keyCode)
+		keyEvents.push([keyCode,1])
+	}
+	else
+		console.log("Unhandled key: code=", e.keyCode, ", '", e.code, "'")
+}
+
+doc_onkeyup=function(e)
+{
+	if(keysMap.has(e.keyCode))
+	{
+		let keyCode=keysMap.get(e.keyCode);
+		keysPressed.delete(keyCode)
+		keyEvents.push([keyCode,0])
+	}
+}
+
+document.addEventListener( "keydown", doc_onkeydown, false);
+document.addEventListener( "keyup", doc_onkeyup, false);
+
+var out = document.createElement('pre')
+out.id = 'out'
+out.style.color="blue"
+out.style.background="lightgrey"
+document.body.appendChild(out)
+
+out=document.getElementById('out');
+
+var reg_ip=start_addr;
+var reg_sp=start_rsp;
+var reg_this=0;
+var regs=[0];
+
+for(i=0;i<consts.length;i++)
+{
+	mem8[i]=consts[i];
+}
+
+
+var interrupt=false
+var quit=false
+let gui=true
+var printed=0
+
+function Step()
+{
+	printed=0;
+	while(true)
+	{
+		code[reg_ip]()
+		if(interrupt)
+		{
+			if(quit)
+			{
+				console.log("OK. Run time ", performance.now()-startTime, " ms")
+				return;
+			}
+			interrupt=false;
+			break;
+		}
+		if(printed>100)
+		{
+			break;
+		}
+	}
+	requestAnimationFrame(Step)
+}
+
+var startTime=performance.now()
+requestAnimationFrame(Step)
+
+</script>
+</body></html>
