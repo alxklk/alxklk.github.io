@@ -1,5 +1,6 @@
 <html>
 <head>
+	<script lang="text/javascript" src="SC_font6x12.js"></script>
 	<script lang="text/javascript" src="SC_Runtime.js"></script>
 	<script lang="text/javascript" src="code.js"></script>
 </head>
@@ -8,9 +9,6 @@
 <script lang="text/javascript">
 
 document.body.style.background="#808080"
-
-if((typeof sound !== 'undefined')&&(sound))
-	StartSound()
 
 if((typeof graphics !== 'undefined')&&(graphics))
 {
@@ -56,7 +54,6 @@ if((typeof graphics !== 'undefined')&&(graphics))
 	var ctx=screen.getContext('2d')
 	ctx.fillStyle = "#304050";
 	ctx.fillRect(0, 0, 640, 480);
-
 }
 
 keysMap=new Map()
@@ -148,8 +145,24 @@ function Step()
 	requestAnimationFrame(Step)
 }
 
-var startTime=performance.now()
-requestAnimationFrame(Step)
+if((typeof sound !== 'undefined')&&(sound))
+{
+	let btn = document.createElement("button");
+	btn.innerHTML = "Start";
+	btn.onclick = function ()
+	{
+		StartSound()
+		let startTime=performance.now()
+		requestAnimationFrame(Step)
+		document.body.removeChild(btn)
+	};
+	document.body.appendChild(btn);
+}
+else
+{
+	let startTime=performance.now()
+	requestAnimationFrame(Step)
+}
 
 </script>
 </body></html>

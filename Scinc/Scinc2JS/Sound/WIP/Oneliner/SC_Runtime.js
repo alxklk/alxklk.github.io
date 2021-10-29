@@ -112,6 +112,61 @@ function SC_Time()
 	PutFloat(reg_sp-8, performance.now()/1000);
 }
 
+function Format(format, offset)
+{
+	while(true)
+	{
+		var percentpos=format.search("%")
+		if(percentpos<0)
+			break;
+		if(format[percentpos+1]=="i")
+		{
+			offset+=4;
+			format=format.replace("%i",GetInt(reg_sp-offset))
+		}
+		else if(format[percentpos+1]=="f")
+		{
+			offset+=8;
+			format=format.replace("%f",GetFloat(reg_sp-offset))
+		}
+		else if(format[percentpos+1]=="s")
+		{
+			offset+=4;
+			var s=GetString(GetInt(reg_sp-offset));
+			format=format.replace("%s",s)
+		}
+		else
+		{
+			format=format.replace("%","")
+		}
+	}
+	return format
+}
+
+
+function SC_snprintf()
+{
+	//	6: int snprintf(char*,int,char*,...);// #6
+	var dst=GetInt(reg_sp-8)
+	var count=GetInt(reg_sp-12)
+	var format=GetString(GetInt(reg_sp-16))
+	format=Format(format, 16)
+	for(var i=0;i<count;i++)
+	{
+		if(i<format.length)
+		{
+			PutChar(dst+i,format.charCodeAt(i));
+		}
+		else
+		{
+			PutChar(dst+i,0);
+			break;
+		}
+	}
+	PutInt(reg_sp-4, count)
+}
+
+
 function SC_printf()
 {
 	var argOffset=8;
@@ -237,7 +292,12 @@ function SC_miterlim()
 {
 }
 
-g_path=new Path2D
+const useStringPath=false
+
+var g_path
+
+if(useStringPath)g_path=""
+else g_path=new Path2D()
 
 function SC_Rect()
 {
@@ -306,7 +366,8 @@ function SC_SetPresentWait(){}
 
 function SC_clear()
 {
-	g_path=new Path2D()
+	if(useStringPath)g_path=""
+	else g_path=new Path2D()
 	ctx.beginPath()
 }
 
@@ -317,22 +378,32 @@ function SC_M()
 {
 	SC_gcpx=GetFloat(reg_sp-8)
 	SC_gcpy=GetFloat(reg_sp-16)
-	g_path.moveTo(SC_gcpx-0.00001, SC_gcpy);
-	g_path.lineTo(SC_gcpx, SC_gcpy);
+	if(useStringPath)
+	{
+		g_path+="M "+(SC_gcpx-0.00001)+" "+(SC_gcpy)
+		g_path+="L "+SC_gcpx+" "+SC_gcpy
+	}
+	else
+	{
+		g_path.moveTo(SC_gcpx-0.00001,SC_gcpy)
+		g_path.lineTo(SC_gcpx,SC_gcpy)
+	}
 }
 
 function SC_L()
 {
 	SC_gcpx=GetFloat(reg_sp-8)
 	SC_gcpy=GetFloat(reg_sp-16)
-	g_path.lineTo(SC_gcpx, SC_gcpy);
+	if(useStringPath)g_path+="L "+SC_gcpx+" "+SC_gcpy
+	else g_path.lineTo(SC_gcpx, SC_gcpy);
 }
 
 function SC_l()
 {
 	SC_gcpx+=GetFloat(reg_sp-8)
 	SC_gcpy+=GetFloat(reg_sp-16)
-	g_path.lineTo(SC_gcpx, SC_gcpy);
+	if(useStringPath)g_path+="L "+SC_gcpx+" "+SC_gcpy
+	else g_path.lineTo(SC_gcpx, SC_gcpy);
 }
 
 function SC_C()
@@ -344,7 +415,8 @@ function SC_C()
 	var y1=GetFloat(reg_sp-32)
 	var x=GetFloat(reg_sp-40)
 	var y=GetFloat(reg_sp-48)
-	g_path.bezierCurveTo(x0,y0,x1,y1,x,y);
+	if(useStringPath)g_path+="C "+x0+" "+y0+" "+x1+" "+y1+" "+x+" "+y
+	else g_path.bezierCurveTo(x0,y0,x1,y1,x,y);
 	SC_gcpx=x
 	SC_gcpy=y
 }
@@ -358,7 +430,8 @@ function SC_c()
 	var y1=GetFloat(reg_sp-32)+SC_gcpy
 	var x=GetFloat(reg_sp-40)+SC_gcpx
 	var y=GetFloat(reg_sp-48)+SC_gcpy
-	g_path.bezierCurveTo(x0,y0,x1,y1,x,y);
+	if(useStringPath)g_path+="C "+x0+" "+y0+" "+x1+" "+y1+" "+x+" "+y
+	else g_path.bezierCurveTo(x0,y0,x1,y1,x,y);
 	SC_gcpx=x
 	SC_gcpy=y
 }
@@ -374,18 +447,21 @@ function SC_a()
 	var dx   =GetFloat(reg_sp-40)
 	var dy   =GetFloat(reg_sp-48)
 	var path = 
-	'L '+SC_gcpx+' '+SC_gcpy+' '+
-	'A'
+	//'M '+SC_gcpx+' '+SC_gcpy+' '+
+	'a'
 	+' '+rx
 	+' '+ry
 	+' '+a
-	+' '+sweep
-	+' '+large
-	+' '+(SC_gcpx+dx)
-	+' '+(SC_gcpy+dy)
-	g_path.addPath(new Path2D(path))
+	+' '+(sweep)
+	+' '+(1-large)
+	+' '+(dx)
+	+' '+(dy)
+	//g_path.addPath(new Path2D(path))
 	SC_gcpx+=dx
 	SC_gcpy+=dy
+
+	if(useStringPath)g_path+=path
+	else g_path.lineTo(SC_gcpx,SC_gcpy);
 }
 
 function SC_Circle()
@@ -402,7 +478,7 @@ function SC_Circle()
 	g_col_a=((col>>24)&0xff)/255.;
 	path=new Path2D
 	path.moveTo(x, y);
-	path.lineTo(x+0.001, y);
+	path.lineTo(x+0.0001, y);
 	ctx.strokeStyle='rgb('+g_col_r*255+','+g_col_g*255+','+g_col_b*255+')'
 	ctx.lineCap="round"
 	ctx.globalAlpha=g_col_a/4.
@@ -413,13 +489,17 @@ function SC_Circle()
 	}
 }
 
-function SC_close(){g_path.closePath()}
+function SC_close()
+{
+	if(useStringPath)g_path+=" z "
+	else g_path.closePath(SC_gcpx,SC_gcpy);
+}
 
 function SC_fin(){}
 
 function SC_alpha()
 {
-	ctx.globalAlpha=GetFloat(reg_sp-8)
+	g_col_a=GetFloat(reg_sp-8)
 }
 
 function SC_graddef(){}
@@ -442,13 +522,16 @@ function SC_width()
 function SC_fill1()
 {
 	ctx.fillStyle='rgb('+g_col_r*255+','+g_col_g*255+','+g_col_b*255+')'
-	ctx.fill(g_path,"nonzero");
+	if(useStringPath)ctx.fill(new Path2D(g_path),"nonzero");
+	else ctx.fill(g_path,"nonzero");
+	
 }
 
 function SC_fill2()
 {
 	ctx.fillStyle='rgb('+g_col_r*255+','+g_col_g*255+','+g_col_b*255+')'
-	ctx.fill(g_path,"evenodd");
+	if(useStringPath)ctx.fill(new Path2D(g_path),"evenodd");
+	else ctx.fill(g_path,"evenodd");
 }
 
 function SC_stroke()
@@ -465,21 +548,26 @@ function SC_stroke()
 		width2=tmp
 	}
 
-	var d=(width2-width1)/1.1;
+	var dw=width2-width1
+	var d=(dw/1.5)|0;
+	if(useStringPath)var path=new Path2D(g_path)
+	
 	if(d<1)
 	{
 		ctx.globalAlpha=g_col_a
-		ctx.lineWidth=width1*1.5
-		ctx.stroke(g_path)
+		ctx.lineWidth=width1*2-1
+		if(useStringPath)ctx.stroke(path)
+		else ctx.stroke(g_path)
 	}
 	else
 	{
-		if(d>10)d=10
+		if(d>32)d=32
 		for(i=0;i<d;i++)
 		{
-			ctx.globalAlpha=g_col_a*1/d
-			ctx.lineWidth=(width1+(width2-width1)*i/d)*1.5
-			ctx.stroke(g_path)
+			ctx.globalAlpha=g_col_a*1.5/d
+			ctx.lineWidth=(width1+(width2-width1)*i/d)*2-1
+			if(useStringPath)ctx.stroke(path)
+			else ctx.stroke(g_path)
 		}
 	}
 }
@@ -513,10 +601,54 @@ function SC_g_y()
 {
 
 }
-function SC_gtext(){}
 
-function SC_snprintf(){}
-function SC_stext(){}
+function SC_gtext()
+{
+
+}
+
+function SC_stext()
+{
+	var stext=GetString(GetInt(reg_sp-8))
+	var x=GetInt(reg_sp-12)
+	var y=GetInt(reg_sp-16)
+	var col=GetInt(reg_sp-20)
+	var c_r=((col>>16)&0xff);
+	var c_g=((col>>8 )&0xff);
+	var c_b=((col    )&0xff);
+	var c_a=((col>>24)&0xff);
+
+	var orgx=x
+	var orgy=y
+
+	if(stext.length==0)
+		return
+	var img = ctx.getImageData(x,y,screen.width, 12);
+	x=0
+	y=0
+	for(var k=0;k<stext.length;k++)
+	{
+		var c=stext.charCodeAt(k)-32
+		x+=6
+		if(c>=256)
+			continue;
+		for(var i=0;i<12;i++)
+		{
+			for(var j=0;j<6;j++)
+			{
+				if(font6x12[c*6*12+i*6+j]!==" ")
+				{
+					img.data[(screen.width*(y+i)+x+j)*4]  =c_r
+					img.data[(screen.width*(y+i)+x+j)*4+1]=c_g
+					img.data[(screen.width*(y+i)+x+j)*4+2]=c_b
+					img.data[(screen.width*(y+i)+x+j)*4+3]=c_a
+				}
+			}
+		}
+	}
+	ctx.putImageData(img,orgx,orgy)
+}
+
 function SC_GetKeyEvent(){}
 
 // Sound

@@ -4,7 +4,6 @@ class ScincAudioProcessor extends AudioWorkletProcessor
 	constructor()
 	{
 		super();
-		console.log("Created audio processor")
 		this.gn=0
 		this.port.onmessage = function(e)
 		{
@@ -13,6 +12,7 @@ class ScincAudioProcessor extends AudioWorkletProcessor
 
 		for(let i=0;i<30;i++)
 			this.port.postMessage(0)
+		console.log("Created audio processor")
 	}
 	
 	static get parameterDescriptors()
