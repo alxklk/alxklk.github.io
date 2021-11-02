@@ -251,8 +251,8 @@ function SC_hairline()
 	var x1=GetFloat(reg_sp-24);
 	var y1=GetFloat(reg_sp-32);
 	ctx.beginPath();
-	ctx.moveTo(x0,y0);
-	ctx.lineTo(x1,y1);
+	ctx.moveTo(x0+.5,y0+.5);
+	ctx.lineTo(x1+.5,y1+.5);
 	ctx.strokeStyle='rgb('+g_col_r*255+','+g_col_g*255+','+g_col_b*255+')'
 	ctx.globalAlpha=g_col_a
 	ctx.stroke();
