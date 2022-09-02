@@ -3,7 +3,7 @@ var cvtbuf   = new ArrayBuffer(8);
 var cvt8     = new Uint8Array(cvtbuf);
 var cvtflt64 = new Float64Array(cvtbuf);
 var cvtint32 = new Int32Array(cvtbuf);
-var membuf   = new ArrayBuffer(1024*128*8);
+var membuf   = new ArrayBuffer(1024*1024*8);
 var mem8     = new Uint8Array(membuf);
 var memint32 = new Int32Array(membuf);
 var memflt64 = new Float64Array(membuf);
@@ -498,15 +498,56 @@ function SC_a()
 function SC_Circle()
 {
 	var x=GetFloat(reg_sp-8)
+	if(x!=x)return
 	var y=GetFloat(reg_sp-16)
+	if(y!=y)return
 	var r=GetFloat(reg_sp-24)
 	var w=GetFloat(reg_sp-32)
 	var a=GetFloat(reg_sp-40)
 	var col=GetInt(reg_sp-44)
-	g_col_r=((col>>16)&0xff)/255.;
-	g_col_g=((col>>8 )&0xff)/255.;
-	g_col_b=((col    )&0xff)/255.;
-	g_col_a=((col>>24)&0xff)/255.;
+	g_col_r=((col>>16)&0xff);
+	g_col_g=((col>>8 )&0xff);
+	g_col_b=((col    )&0xff);
+	g_col_a=((col>>24)&0xff);
+
+	var rr=r+a+w
+	var rw=(rr+ 1)|0;
+	var rw2=rw*2
+	var x0=(x-rw)|0
+	var y0=(y-rw)|0
+
+	var imageData = ctx.getImageData(x0, y0, rw2, rw2);
+
+	var data = imageData.data;
+	var dx=x-x0
+	var dy=y-y0
+	
+	var index = 0 
+	var cy=-dy
+	var da=1./a
+	for (var i = 0; i < rw2; ++i)
+	{
+		var cx=-dx
+		for (var j = 0; j < rw2; ++j)
+		{
+			var v=Math.sqrt(cx*cx+cy*cy)
+			v=1-(Math.abs(v-r)-w)*da
+			if(v>0)
+			{
+				if(v>1)v=1
+				v*=g_col_a/255.
+				data[index  ] = data[index  ]*(1-v)+g_col_r*v;    // red
+				data[index+1] = data[index+1]*(1-v)+g_col_g*v;    // green
+				data[index+2] = data[index+2]*(1-v)+g_col_b*v;    // blue
+			}
+			index+=4
+			cx+=1
+		}
+		cy+=1
+	}
+	
+	ctx.putImageData(imageData, x-rw, y-rw);
+/*
 	path=new Path2D
 	path.moveTo(x, y);
 	path.lineTo(x+0.0001, y);
@@ -526,7 +567,7 @@ function SC_Circle()
 	//{
 	//	ctx.lineWidth=a*4.*i/3.
 	//	ctx.stroke(path)
-	//}
+	//}*/
 }
 
 function SC_close()
