@@ -1,6 +1,8 @@
 <html>
 <head>
+	<script lang="text/javascript" src="SC_Letters.js"></script>
 	<script lang="text/javascript" src="SC_Runtime.js"></script>
+	<script lang="text/javascript" src="SC_JVG.js"></script>
 	<script lang="text/javascript" src="code.js"></script>
 	<style>
 	canvas
@@ -14,13 +16,28 @@
 </head>
 <body>
 
-	<center><div id='SC_Content'></div></center>
+<center><div id='SC_Content'></div></center>
 <script lang="text/javascript">
+
+function MultiCharI(s)
+{
+	let x=0;
+	for(i=0;i<s.length;i++)
+	{
+		x=x*256+s.charCodeAt(i);
+	}
+	return x;
+}
+
 
 document.body.style.background="#808080"
 
 var ctx
 var scrCtx
+
+var screen=false;
+
+var events=[];
 
 if((typeof graphics !== 'undefined')&&(graphics))
 {
@@ -30,14 +47,17 @@ if((typeof graphics !== 'undefined')&&(graphics))
 	if(typeof G_SCREEN_HEIGHT === 'undefined')
 		G_SCREEN_HEIGHT=480
 
+	if(typeof G_SCREEN_SCALE === 'undefined')
+		G_SCREEN_SCALE=2
+
 	var offScreen = document.createElement('canvas')
 	offScreen.width = G_SCREEN_WIDTH
 	offScreen.height = G_SCREEN_HEIGHT
 
-	var screen = document.createElement('canvas')
+	screen = document.createElement('canvas')
 
-	screen.width=G_SCREEN_WIDTH*3
-	screen.height=G_SCREEN_HEIGHT*3
+	screen.width=G_SCREEN_WIDTH*G_SCREEN_SCALE
+	screen.height=G_SCREEN_HEIGHT*G_SCREEN_SCALE
 
 	document.getElementById('SC_Content').appendChild(screen)
 
@@ -47,23 +67,26 @@ if((typeof graphics !== 'undefined')&&(graphics))
 
 	screen.onmousemove=function(e)
 	{
-		SC_mx=e.offsetX;
-		SC_my=e.offsetY;
+		SC_mx=e.offsetX/G_SCREEN_SCALE;
+		SC_my=e.offsetY/G_SCREEN_SCALE;
 		SC_mb=e.buttons;
+		events.push({type:MultiCharI("MMOV"), _0:SC_mb, _1:SC_mx, _2:SC_my})
 	}
 
 	screen.onmousedown=function(e)
 	{
-		SC_mx=e.offsetX;
-		SC_my=e.offsetY;
+		SC_mx=e.offsetX/G_SCREEN_SCALE;
+		SC_my=e.offsetY/G_SCREEN_SCALE;
 		SC_mb=e.buttons;
+		events.push({type:MultiCharI("MLDN"), _0:SC_mb, _1:SC_mx, _2:SC_my})
 	}
 
 	screen.onmouseup=function(e)
 	{
-		SC_mx=e.offsetX;
-		SC_my=e.offsetY;
+		SC_mx=e.offsetX/G_SCREEN_SCALE;
+		SC_my=e.offsetY/G_SCREEN_SCALE;
 		SC_mb=e.buttons;
+		events.push({type:MultiCharI("MLUP"), _0:SC_mb, _1:SC_mx, _2:SC_my})
 	}
 
 	scrCtx=screen.getContext('2d')
@@ -93,6 +116,9 @@ if((typeof graphics !== 'undefined')&&(graphics))
 	keysMap.set(39,4003)
 	keysMap.set(32,32)
 	keysMap.set(9,4010)
+	keysMap.set(8,4008)
+	keysMap.set(16,3004)
+	keysMap.set(17,3000)
 
 
 	keysPressed=new Set()
@@ -106,6 +132,7 @@ if((typeof graphics !== 'undefined')&&(graphics))
 			let keyCode=keysMap.get(e.keyCode);
 			keysPressed.add(keyCode)
 			keyEvents.push([keyCode,1])
+			events.push({type:MultiCharI("KBDN"), _0:keyCode, _1:0, _2:0})
 		}
 		else
 			console.log("Unhandled key: code=", e.keyCode, ", '", e.code, "'")
@@ -118,11 +145,86 @@ if((typeof graphics !== 'undefined')&&(graphics))
 			let keyCode=keysMap.get(e.keyCode);
 			keysPressed.delete(keyCode)
 			keyEvents.push([keyCode,0])
+			events.push({type:MultiCharI("KBUP"), _0:keyCode, _1:0, _2:0})
 		}
 	}
 
 	document.addEventListener( "keydown", doc_onkeydown, false);
 	document.addEventListener( "keyup", doc_onkeyup, false);
+
+
+	var touchx
+	var touchy
+	doc_touchstart=function(e)
+	{
+		e.preventDefault()
+		if(e.touches.length==1)
+		{
+			touchx=e.touches[0].screenX
+			touchy=e.touches[0].screenY
+		}
+	}
+
+	doc_touchend=function(e)
+	{
+		e.preventDefault()
+		//out.innerText+="UnTouch "
+		if(e.changedTouches.length==1)
+		{
+			let dx=e.changedTouches[0].screenX-touchx;
+			let dy=e.changedTouches[0].screenY-touchy;
+			//out.innerText+=" "+dx+" "+dy+"\n"
+			if((Math.abs(dx)<5)&&(Math.abs(dy)<5))
+			{
+				keyEvents.push([32,1])
+				keyEvents.push([32,0])
+				return
+			}			
+			if(Math.abs(dx)<Math.abs(dy))
+			{
+				if(dy<0)
+				{
+					keyEvents.push([4000,1])
+					keyEvents.push([4000,0])
+				}
+				else
+				{
+					keyEvents.push([4001,1])
+					keyEvents.push([4001,0])
+				}
+			}
+			else
+			{
+				if(dx<0)
+				{
+					//out.innerText+="Left\n"
+					keyEvents.push([4002,1])
+					keyEvents.push([4002,0])
+				}
+				else
+				{
+					//out.innerText+="Right\n"
+					keyEvents.push([4003,1])
+					keyEvents.push([4003,0])
+				}
+			}
+		}
+	}
+
+	document.body.addEventListener('touchstart',  doc_touchstart, false);
+	//document.addEventListener('touchmove',   doc_touchmove, false);
+	//document.addEventListener('touchcancel', doc_touchcancel, false);
+	document.body.addEventListener('touchend',    doc_touchend, false);
+
+
+	var proFont = new FontFace('proFont', 'url(ProFontWindows.ttf)');
+
+	proFont.load().then(function(font){
+		document.fonts.add(font);
+		console.log('Font loaded');
+		var ctx = offScreen.getContext("2d");
+		ctx.font = "12px proFont";
+	});	
 
 }
 
@@ -132,7 +234,7 @@ out.style.color="blue"
 out.style.background="lightgrey"
 document.body.appendChild(out)
 
-out=document.getElementById('out');
+//out=document.getElementById('out');
 
 var reg_ip=start_addr;
 var reg_sp=start_rsp;
@@ -152,7 +254,7 @@ var printed=0
 
 function Step()
 {
-	printed=0;
+	let i=0
 	while(true)
 	{
 		code[reg_ip]()
@@ -163,23 +265,46 @@ function Step()
 				console.log("OK. Run time ", performance.now()-startTime, " ms")
 				return;
 			}
+			if(printed>100)
+			{
+				printed=0;
+				break;
+			}
 			interrupt=false;
 			break;
 		}
-		if(printed>100)
-		{
-			break;
-		}
+		//i++
+		//if(i>1000000)
+		//	break;
 	}
-	scrCtx.drawImage(offScreen,0,0,screen.width, screen.height)
+	if(screen)
+	{
+		//g_path=new Path2D()
+		/*g_tcpx=100
+		g_tcpy=100
+		g_tscx=10
+		g_tscy=-10
+		SC_DrawText("Hi there");
+		ctx.strokeStyle='red'
+		ctx.globalAlpha=1
+		ctx.lineWidth=2
+		ctx.stroke(g_path)
+*/
+		scrCtx.drawImage(offScreen,0,0,screen.width, screen.height)
+	}
 	requestAnimationFrame(Step)
 }
+
+
 
 if((typeof sound !== 'undefined')&&(sound))
 {
 	if(natives.includes('snd_out')||natives.includes('snd_out_buf'))
 	{
 		let btn = document.createElement("button");
+		btn.style.position="absolute"
+		btn.style.top="10"
+		btn.style.left="64"
 		btn.innerHTML = "Start";
 		btn.onclick = function ()
 		{
@@ -204,19 +329,15 @@ else
 }
 
 var svgDiv = document.createElement('div')
-svgDiv.style.opacity=".25"
+svgDiv.style.opacity=".33"
 svgDiv.style.position="absolute"
 svgDiv.style.top="0"
 svgDiv.style.left="0"
+svgDiv.href=
 document.body.appendChild(svgDiv)
-var newSvg = document.createElement('svg')
-newSvg.style.position="absolute"
-newSvg.style.top="0"
-newSvg.style.left="0"
 
-svgDiv.appendChild(newSvg)
-newSvg.outerHTML += 
-`
+svgDiv.innerHTML = 
+`<a href="https://github.com/alxklk/Scinc">
 <svg width="32" height="32" xmlns="http://www.w3.org/2000/svg">
 <g transform="scale(0.25)">
 	<g fill="#6b7" stroke="#000" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -236,6 +357,7 @@ newSvg.outerHTML +=
 	</g>
 </g>
 </svg>
+</a>
 `
 ;
 
